@@ -4,6 +4,7 @@ import { Clock, Flame, Landmark, MapPin, Navigation, RefreshCw, ShieldAlert, Spa
 import GlassCard from '../components/ui/GlassCard.jsx';
 import Ring from '../components/ui/Ring.jsx';
 import TierBadge from '../components/ui/TierBadge.jsx';
+import PredictionFeedback from '../components/ui/PredictionFeedback.jsx';
 import { useApp } from '../state/AppContext.jsx';
 import { predictCashOut } from '../lib/predictor.js';
 import { scoreZoneFromPrediction } from '../lib/riskEngine.js';
@@ -240,6 +241,8 @@ export default function Heatmap() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          <PredictionFeedback caseId={activeCase.id} />
         </div>
       </div>
 

@@ -6,6 +6,7 @@ import {
 import { motion } from 'framer-motion';
 import GlassCard from '../components/ui/GlassCard.jsx';
 import Counter from '../components/ui/Counter.jsx';
+import ModelAccuracyCard from '../components/ui/ModelAccuracyCard.jsx';
 import { useApp } from '../state/AppContext.jsx';
 import { predictCashOut } from '../lib/predictor.js';
 import { inrFull, inrCompact, timeAgo, shortDate } from '../lib/format.js';
@@ -61,6 +62,8 @@ export default function Dashboard() {
         <Stat label="At risk (float)" icon={Flame} tone="warn" value={metrics.atRisk} format={inrCompact} pulse />
         <Stat label="Amount protected" icon={CheckCircle2} tone="good" value={metrics.amountSaved} format={inrCompact} />
       </div>
+
+      <ModelAccuracyCard />
 
       {/* Quick nav */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -260,6 +263,8 @@ function EmptyState() {
           </GlassCard>
         ))}
       </div>
+
+      <ModelAccuracyCard />
     </div>
   );
 }

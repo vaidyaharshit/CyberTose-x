@@ -1,6 +1,9 @@
 node_modules/
 dist/
 dev.log
+dev-run.log
+dev.err.log
+preview.log
 pref.log
 local.log
 *.local

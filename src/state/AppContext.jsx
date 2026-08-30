@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { buildDemoCase, buildHistoricCases, buildIntakeCase, makeSessionNow } from '../lib/cases.js';
 import { startChain, appendEntry } from '../lib/hashchain.js';
+import { buildSeedReviews, computeAccuracy } from '../lib/feedback.js';
 
 const Ctx = createContext(null);
 export const useApp = () => useContext(Ctx);
@@ -38,6 +39,7 @@ export function AppProvider({ children }) {
   const [tamperSeq, setTamperSeq] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [intakeDraft, setIntakeDraft] = useState(null);
+  const [feedback, setFeedback] = useState(() => buildSeedReviews(makeSessionNow()));
   const serialRef = useRef(43);
 
   const pushToast = useCallback((msg, kind = 'info') => {
@@ -253,7 +255,64 @@ export function AppProvider({ children }) {
     pushToast('Simulated tamper injected into an audit entry.', 'warn');
   }, [audit, tamperSeq, pushToast]);
 
+  const requestFreeze = useCallback(
+    (caseId, mule, meta = {}) => {
+      const ref = meta.ref || `FRZ-${Date.now().toString(36).toUpperCase()}`;
+      const frozenMs = meta.frozenMs != null ? meta.frozenMs : 4200;
+      setCases((cs) =>
+        cs.map((c) =>
+          c.id === caseId
+            ? {
+                ...c,
+                actionLog: [
+                  ...(c.actionLog || []),
+                  { at: Date.now(), actor: 'Officer R. Deshmukh', action: 'FREEZE_REQUESTED', note: `Freeze request ${ref} sent for ${mule.id} (${mule.account}) @ ${mule.bankCode} — approved via bank/NPCI freeze API simulation.` },
+                ],
+                mules: c.mules.map((m) => (m.id === mule.id ? { ...m, frozen: true, frozenAt: Date.now(), frozenMs, freezeRef: ref } : m)),
+              }
+            : c
+        )
+      );
+      setAudit((chain) =>
+        appendEntry(chain, {
+          ts: Date.now(),
+          actor: 'Officer R. Deshmukh',
+          action: 'ACCOUNT_FROZEN',
+          subject: caseId,
+          detail: `Mule ${mule.id} (${mule.account}, ${mule.bankCode}) frozen in ${(frozenMs / 1000).toFixed(1)}s via bank freeze API (ref ${ref}). ₹${(mule.balance || 0).toLocaleString('en-IN')} at risk protected.`,
+        })
+      );
+      pushToast(`Freeze confirmed — ₹${(mule.balance || 0).toLocaleString('en-IN')} protected on ${mule.id}.`, 'success');
+      return ref;
+    },
+    [logAudit, pushToast]
+  );
+
+  const recordFeedback = useCallback(
+    (caseId, accurate) => {
+      setFeedback((f) => {
+        const rest = f.filter((x) => x.caseId !== caseId);
+        return [...rest, { caseId, accurate, at: Date.now(), source: 'officer' }];
+      });
+      setAudit((chain) =>
+        appendEntry(chain, {
+          ts: Date.now(),
+          actor: 'Officer R. Deshmukh',
+          action: accurate ? 'PREDICTION_TRUE' : 'PREDICTION_FALSE',
+          subject: caseId,
+          detail: accurate
+            ? 'Officer marked the predicted cash-out as accurate after review (verified on ground).'
+            : 'Officer marked the predicted cash-out as a false alarm after review.',
+        })
+      );
+      pushToast(accurate ? 'Feedback logged — prediction confirmed by review.' : 'Feedback logged — false alarm flagged.', accurate ? 'success' : 'info');
+    },
+    [pushToast]
+  );
+
   const activeCase = cases.find((c) => c.id === activeCaseId) || null;
+
+  const accuracy = useMemo(() => computeAccuracy(feedback), [feedback]);
 
   const metrics = useMemo(() => {
     const demoSaved = prevented.reduce((a, p) => a + p.amount, 0);
@@ -277,8 +336,10 @@ export function AppProvider({ children }) {
     audit, tamperSeq,
     alerts, prevented, metrics,
     toasts,
+    feedback, accuracy, recordFeedback,
     pushToast, loadDemo, submitIntake, closeCase, refreshPrediction,
     pushAlert, advanceAlert, preventAlert,
+    requestFreeze,
     caseAction,
     logAudit,
     toggleTamper,

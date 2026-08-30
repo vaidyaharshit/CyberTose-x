@@ -4,11 +4,13 @@ import { Banknote, User, Wallet, ExternalLink, GitBranch, Landmark, ShieldAlert,
 import GlassCard from '../components/ui/GlassCard.jsx';
 import PanZoom from '../components/ui/PanZoom.jsx';
 import TierBadge from '../components/ui/TierBadge.jsx';
+import ReputationBadge from '../components/ui/ReputationBadge.jsx';
 import { useApp } from '../state/AppContext.jsx';
 import { buildGraph, graphSummary } from '../lib/graph.js';
-import { inrFull, shortTime, timeAgo, inrCompact } from '../lib/format.js';
+import { inrFull, shortDate, shortTime, timeAgo, inrCompact } from '../lib/format.js';
 import { zoneById } from '../lib/dataset.js';
 import { predictCashOut } from '../lib/predictor.js';
+import { reputationForAccount } from '../lib/reputation.js';
 
 const W = 1000;
 const H = 620;
@@ -249,6 +251,7 @@ function NodeDetail({ node }) {
         </h3>
         {node.risk && <TierBadge tier={node.risk.tier} label={node.risk.tierLabel} />}
       </div>
+      <MuleReputation node={node} />
       <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
         <div className="rounded-lg bg-raise/60 p-2.5 ring-1 ring-edge">
           <div className="text-[10px] uppercase tracking-wider text-faint">Bank</div>
@@ -288,6 +291,48 @@ function NodeDetail({ node }) {
         </div>
       )}
     </GlassCard>
+  );
+}
+
+function MuleReputation({ node }) {
+  const { setView } = useApp();
+  const [show, setShow] = useState(false);
+  const rep = node.ifsc ? reputationForAccount(node.ifsc, Date.now()) : null;
+  if (!rep) return null;
+  return (
+    <div className="mt-2.5 rounded-lg border border-cyanx/25 bg-cyanx/5 p-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-faint">
+          Pattern reputation
+          <ReputationBadge tier={rep.tier} score={rep.score} compact />
+        </span>
+        <button onClick={() => setView('reputation')} className="text-[10px] font-semibold text-cyanx hover:underline">
+          Open network →
+        </button>
+      </div>
+      {rep.cases > 0 ? (
+        <>
+          <button onClick={() => setShow((s) => !s)} className="mt-1.5 flex w-full items-center justify-between text-[11px] text-dim hover:text-cyanx">
+            <span>This account has appeared in <strong className="text-ink">{rep.cases} prior case{rep.cases === 1 ? '' : 's'}</strong> — pattern-based flag, requires verification.</span>
+            <ChevronRight size={12} className={`shrink-0 transition-transform ${show ? 'rotate-90' : ''}`} />
+          </button>
+          {show && (
+            <ul className="mt-1.5 space-y-1 border-t border-cyanx/15 pt-1.5">
+              {rep.appearances.map((a) => (
+                <li key={a.caseId} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[10px] text-dim">
+                  <span className="text-cyanx">{a.caseId}</span>
+                  <span className="text-faint">{shortDate(a.at)}</span>
+                  <span className="text-ink">{inrCompact(a.amount)}</span>
+                  <span className="ml-auto text-faint">victim {a.victim}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : (
+        <p className="mt-1 text-[10px] text-faint">No prior-case overlap in the sample corpus.</p>
+      )}
+    </div>
   );
 }
 

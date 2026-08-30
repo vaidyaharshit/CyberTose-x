@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Database, Gauge, GitBranch, LayoutGrid, Map, Radar, ShieldCheck, FileText } from 'lucide-react';
+import { Database, Gauge, GitBranch, LayoutGrid, Map, Network, Radar, ShieldCheck, FileText } from 'lucide-react';
 import { useApp } from '../state/AppContext.jsx';
 import Sidebar from './Sidebar.jsx';
 import Topbar from './Topbar.jsx';
@@ -12,6 +12,7 @@ import Heatmap from '../views/Heatmap.jsx';
 import Risk from '../views/Risk.jsx';
 import AlertSim from '../views/AlertSim.jsx';
 import Audit from '../views/Audit.jsx';
+import Reputation from '../views/Reputation.jsx';
 
 export const NAV = [
   { key: 'dashboard', label: 'Command Dashboard', icon: LayoutGrid },
@@ -19,11 +20,12 @@ export const NAV = [
   { key: 'trail', label: 'Money Trail Graph', icon: GitBranch },
   { key: 'heatmap', label: 'Cash-Out Heatmap', icon: Map },
   { key: 'risk', label: 'Risk Engine', icon: Gauge },
+  { key: 'reputation', label: 'Reputation Network', icon: Network },
   { key: 'alert', label: 'Live Alert Stream', icon: Radar },
   { key: 'audit', label: 'Audit Chain', icon: ShieldCheck },
 ];
 
-const VIEWS = { dashboard: Dashboard, intake: Intake, trail: Trail, heatmap: Heatmap, risk: Risk, alert: AlertSim, audit: Audit };
+const VIEWS = { dashboard: Dashboard, intake: Intake, trail: Trail, heatmap: Heatmap, risk: Risk, reputation: Reputation, alert: AlertSim, audit: Audit };
 
 export default function Shell() {
   const { view, drawerOpen, setDrawerOpen, loading } = useApp();

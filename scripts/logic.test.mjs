@@ -6,6 +6,8 @@ import { appendEntry, startChain, verifyChain } from '../src/lib/hashchain.js';
 import { buildDemoCase, buildHistoricCases, buildIntakeCase } from '../src/lib/cases.js';
 import { predictCashOut } from '../src/lib/predictor.js';
 import { scoreMule, scoreZoneFromPrediction } from '../src/lib/riskEngine.js';
+import { reputationForAccount, buildCorpus, computeReputation } from '../src/lib/reputation.js';
+import { buildSeedReviews, computeAccuracy } from '../src/lib/feedback.js';
 import { ZONES } from '../src/lib/dataset.js';
 
 let passed = 0;
@@ -99,5 +101,37 @@ check('intake case predictable', () => {
 console.log('\n[Historic seed]');
 const hist = buildHistoricCases(now);
 check('history seeded', () => assert.strictEqual(hist.length, 2));
+
+console.log('\n[Mule reputation network]');
+const corpus = buildCorpus(now);
+const rep1 = reputationForAccount('VNB0000211', now);
+check('demo mule appears in exactly 3 prior cases', () => assert.strictEqual(rep1.cases, 3));
+check('reputation tier is one of the 4', () => assert.ok(['CLEAN', 'WATCH', 'FLAGGED', 'CONFIRMED'].includes(rep1.tier)));
+check('higher overlap + flow -> higher score', () => {
+  const a = computeReputation(corpus.find((x) => x.ifsc === 'VNB0000211'));
+  const b = computeReputation(corpus.find((x) => x.ifsc === 'IRB0007684'));
+  assert.ok(a.score > b.score);
+  assert.ok(a.tier !== 'CLEAN');
+});
+check('every factor carries impact + note', () => {
+  for (const a of corpus.map(computeReputation)) {
+    assert.ok(a.factors.length > 0);
+    for (const f of a.factors) assert.ok(['raise', 'lower'].includes(f.impact) && f.label && f.note);
+  }
+});
+check('unknown IFSC -> CLEAN zero entry', () => {
+  const u = reputationForAccount('XXX0000000', now);
+  assert.strictEqual(u.tier, 'CLEAN');
+  assert.strictEqual(u.cases, 0);
+  assert.strictEqual(u.score, 0);
+});
+
+console.log('\n[Prediction feedback loop]');
+const reviews = buildSeedReviews(now);
+check('seed reviews deterministic', () => assert.deepStrictEqual(reviews, buildSeedReviews(now)));
+const acc = computeAccuracy(reviews, 30);
+check('accuracy derived from last 30 (26 seed) reviews', () => assert.strictEqual(acc.reviewed, 26));
+check('accuracy pct stays in honest band ~78%', () => assert.ok(acc.pct >= 55 && acc.pct <= 95));
+check('sparkline length equals reviewed window', () => assert.strictEqual(acc.spark.length, acc.reviewed));
 
 console.log(`\n${passed} checks passed.`);

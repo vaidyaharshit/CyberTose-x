@@ -81,6 +81,14 @@ async function run(page) {
   if (await hasText(page, 'requires verification')) ok('risk factors with "requires verification" language');
   else bad('requires verification language');
 
+  // 5b. Auto-freeze request simulation (HIGH-risk mule)
+  await clickText(page, 'Send Freeze Request to Bank');
+  await page.getByText('Account frozen', { exact: false }).filter({ visible: true }).first().waitFor({ state: 'visible', timeout: 12000 });
+  if (await hasText(page, 'Frozen in')) ok('freeze timeline completes -> frozen summary');
+  else bad('freeze timeline');
+  if (await hasText(page, 'Simulated for demo purposes')) ok('freeze disclaimer present');
+  else bad('freeze disclaimer');
+
   // 6. Alert simulation
   await clickText(page, 'Live Alert Stream');
   await sleep(800);
@@ -102,11 +110,25 @@ async function run(page) {
   if (await hasText(page, 'Cash-out prevented')) ok('prevention toast fired');
   else bad('prevention toast');
 
+  // 6b. Prediction feedback loop — case is Resolved after interception
+  await clickText(page, 'Cash-Out Heatmap');
+  await sleep(900);
+  const accBtn = page.getByRole('button', { name: 'Prediction Was Accurate' });
+  await accBtn.scrollIntoViewIfNeeded();
+  await accBtn.click();
+  await sleep(400);
+  if (await hasText(page, 'Reviewed for')) ok('prediction feedback logged to loop');
+  else bad('feedback logged');
+  if (await hasText(page, 'prediction accurate')) ok('accurate rating stored');
+  else bad('feedback stored');
+
   // 7. Audit chain
   await clickText(page, 'Audit Chain');
   await sleep(800);
   if (await hasText(page, 'Blockchain-backed audit trail')) ok('audit page');
   else bad('audit page');
+  if (await hasText(page, 'ACCOUNT_FROZEN')) ok('freeze action logged to audit chain');
+  else bad('freeze audit entry');
   await clickText(page, 'Verify chain');
   await sleep(600);
   if (await hasText(page, 'Chain intact')) ok('integrity verification OK');
@@ -130,9 +152,30 @@ async function run(page) {
   const saved = await page.getByText('Amount protected');
   await saved.scrollIntoViewIfNeeded();
 
+  // 8b. Model accuracy (feedback loop) on dashboard
+  await page.getByText('Model accuracy').scrollIntoViewIfNeeded();
+  if (await hasText(page, 'Model accuracy')) ok('model accuracy card on dashboard');
+  else bad('model accuracy card');
+  if (await hasText(page, 'reviewed prediction')) ok('accuracy caption = reviewed predictions');
+  else bad('accuracy caption');
+
   // 9. Screenshot sanity
   await page.screenshot({ path: 'C:\\Users\\ASUS\\AppData\\Local\\Temp\\opencode\\tracegrid-desktop.png' });
   ok('desktop screenshot captured');
+
+  // 10. Mule reputation network
+  await clickText(page, 'Reputation Network');
+  await sleep(800);
+  if (await hasText(page, 'Mule reputation network')) ok('reputation network page');
+  else bad('reputation network page');
+  if (await hasText(page, 'Pattern-based flag') && await hasText(page, 'requires investigative verification')) ok('reputation disclaimer (pattern = hypothesis)');
+  else bad('reputation disclaimer');
+  await clickText(page, 'View Network Graph');
+  await sleep(600);
+  if (await hasText(page, 'Network graph')) ok('network graph opens for account');
+  else bad('network graph');
+  if (await hasText(page, '3 prior cases')) ok('demo mule shows 3 linked appearances');
+  else bad('prior appearances');
 }
 
 async function runMobile(page) {
@@ -190,6 +233,18 @@ async function runMobile(page) {
   await sleep(700);
   await page.screenshot({ path: 'C:\\Users\\ASUS\\AppData\\Local\\Temp\\opencode\\tracegrid-mobile-dash.png' });
   ok('mobile screenshots captured');
+
+  // reputation page mobile
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  await sleep(400);
+  await page.getByRole('button', { name: 'Reputation Network' }).click();
+  await sleep(700);
+  const noRepScroll = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
+  if (noRepScroll) ok('mobile: no horizontal scroll on reputation');
+  else bad('mobile: reputation overflow');
+  if (await hasText(page, 'Mule reputation network')) ok('mobile: reputation page rendered');
+  else bad('mobile: reputation page');
+  await page.screenshot({ path: 'C:\\Users\\ASUS\\AppData\\Local\\Temp\\opencode\\tracegrid-mobile-rep.png' });
 }
 
 async function main() {

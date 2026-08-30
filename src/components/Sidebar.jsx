@@ -29,7 +29,7 @@ export default function Sidebar({ mobile = false, onClose }) {
         {NAV.map((item) => {
           const Icon = item.icon;
           const active = view === item.key;
-          const demoOnly = item.key !== 'dashboard' && item.key !== 'intake';
+          const demoOnly = item.key !== 'dashboard' && item.key !== 'intake' && item.key !== 'reputation';
           return (
             <button
               key={item.key}
